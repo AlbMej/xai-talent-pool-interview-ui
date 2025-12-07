@@ -7,18 +7,22 @@ const state = {
     recordingInterval: null,
     videoStream: null,
     recommendedQuestions: [],
-    questionsCollapsed: false,
+    questionsCollapsed: true,
     isLoadingQuestions: false,
+    questionsGenerated: false,
     questionHistory: [],
     transcript: [
         { timestamp: '15:49:03', text: "Hey my name is Thomas Uh I'm a junior engineer and I use React" }
     ],
     skillTree: null,
+    candidateSkillTree: null,
     skillProgress: new Map(),
     waveformHeights: Array(20).fill(20),
     waveformAnimationFrame: null,
     lastProcessedIndex: 0,
-    applicationUrl: null
+    applicationUrl: null,
+    candidateFileId: null,
+    skillSimilarities: null // Stores similarity data from Grok API
 };
 
 // DOM elements
@@ -43,7 +47,10 @@ const elements = {
     muteIcon: document.getElementById('muteIcon'),
     skillTreeContainer: document.getElementById('skillTreeContainer'),
     resetLayoutButton: document.getElementById('resetLayoutButton'),
-    jobLinkButton: document.getElementById('jobLinkButton')
+    jobLinkButton: document.getElementById('jobLinkButton'),
+    resumeUpload: document.getElementById('resumeUpload'),
+    resumeUploadButton: document.getElementById('resumeUploadButton'),
+    resumeStatus: document.getElementById('resumeStatus')
 };
 
 // Initialize waveform bars
@@ -233,6 +240,10 @@ function renderJobs(jobs) {
             });
             // Add active class to clicked item
             jobItem.classList.add('active');
+            // Show loading state
+            elements.skillTreeContainer.innerHTML = '<div class="loading-text">Loading skill tree...</div>';
+            // Reset visualization instance
+            skillTreeViz = null;
             // Load skill tree for this job
             loadSkillTree(job.job_id);
         });
@@ -251,29 +262,42 @@ async function loadSkillTree(jobId = null) {
         jobId = urlParams.get('job_id');
     }
     
+    // Don't load a tree if no jobId is provided
+    if (!jobId) {
+        elements.skillTreeContainer.innerHTML = '<div class="loading-text">Select a job to view skill tree</div>';
+        state.skillTree = null;
+        state.applicationUrl = null;
+        updateJobLinkButton();
+        state.skillProgress = new Map();
+        state.skillSimilarities = null;
+        state.questionsGenerated = false;
+        state.recommendedQuestions = [];
+        renderQuestions();
+        return;
+    }
+    
     try {
         let skillTreeData;
         
-        if (jobId) {
-            try {
-                const response = await fetch(`http://localhost:5000/api/v1/skill-trees/${jobId}`);
-                if (response.ok) {
-                    skillTreeData = await response.json();
-                }
-            } catch (e) {
-                console.warn('Server endpoint not available, loading default');
+        try {
+            const response = await fetch(`http://localhost:5000/api/v1/skill-trees/${jobId}`);
+            if (response.ok) {
+                skillTreeData = await response.json();
+            } else {
+                throw new Error('Skill tree not found');
             }
-        }
-        
-        if (!skillTreeData) {
-            try {
-                const response = await fetch('http://localhost:5000/api/v1/skill-trees/default');
-                if (response.ok) {
-                    skillTreeData = await response.json();
-                }
-            } catch (e) {
-                skillTreeData = getDefaultSkillTree();
-            }
+        } catch (e) {
+            console.warn('Failed to load skill tree:', e);
+            elements.skillTreeContainer.innerHTML = '<div class="loading-text">Skill tree not found for this job</div>';
+            state.skillTree = null;
+            state.applicationUrl = null;
+            updateJobLinkButton();
+            state.skillProgress = new Map();
+            state.skillSimilarities = null;
+            state.questionsGenerated = false;
+            state.recommendedQuestions = [];
+            renderQuestions();
+            return;
         }
         
         state.skillTree = skillTreeData;
@@ -284,19 +308,25 @@ async function loadSkillTree(jobId = null) {
         // Reset skill progress when loading new tree
         state.skillProgress = new Map();
         initializeSkillProgress(skillTreeData);
+        // Reset similarity data when loading new job
+        state.skillSimilarities = null;
         renderSkillTree(skillTreeData);
-        await generateQuestionsFromSkillTree(skillTreeData);
+        // Reset questions when loading new tree
+        state.questionsGenerated = false;
+        state.recommendedQuestions = [];
+        renderQuestions();
     } catch (error) {
         console.error('Failed to load skill tree:', error);
-        const defaultTree = getDefaultSkillTree();
-        state.skillTree = defaultTree;
-        state.applicationUrl = defaultTree.application_url || null;
-        // Update job link button visibility
+        // Don't load default tree on error - show message instead
+        elements.skillTreeContainer.innerHTML = '<div class="loading-text">Failed to load skill tree. Please select a job.</div>';
+        state.skillTree = null;
+        state.applicationUrl = null;
         updateJobLinkButton();
         state.skillProgress = new Map();
-        initializeSkillProgress(defaultTree);
-        renderSkillTree(defaultTree);
-        await generateQuestionsFromSkillTree(defaultTree);
+        state.skillSimilarities = null;
+        state.questionsGenerated = false;
+        state.recommendedQuestions = [];
+        renderQuestions();
     }
 }
 
@@ -375,7 +405,13 @@ function initializeSkillProgress(node) {
 
 // Generate questions from skill tree
 async function generateQuestionsFromSkillTree(tree) {
+    if (!tree) {
+        tree = state.skillTree;
+    }
+    if (!tree) return;
+    
     state.isLoadingQuestions = true;
+    state.questionsGenerated = true;
     elements.questionsLoading.style.display = 'block';
     elements.questionsList.innerHTML = '';
     
@@ -392,6 +428,7 @@ async function generateQuestionsFromSkillTree(tree) {
         extractSkills(tree);
         
         const jobTitle = tree.job_title || 'Software Engineer';
+        const location = tree.location || '';
         const skillsList = skills.slice(0, 10).join(', ');
         
         const response = await fetch('http://localhost:5000/api/v1/generate-interview-questions', {
@@ -401,8 +438,10 @@ async function generateQuestionsFromSkillTree(tree) {
             },
             body: JSON.stringify({
                 job_title: jobTitle,
-                skills: skillsList,
-                skill_tree: JSON.stringify(tree)
+                location: location,
+                skills: skillsList, // Keep for fallback
+                job_skill_tree: tree, // Full job skill tree for Grok
+                candidate_skill_tree: state.candidateSkillTree || null // Candidate skill tree if available
             })
         });
         
@@ -456,8 +495,39 @@ async function generateQuestionsFromSkillTree(tree) {
 
 // Render questions
 function renderQuestions() {
-    const questions = state.recommendedQuestions.filter(q => !q.asked && !q.skipped);
     elements.questionsList.innerHTML = '';
+    
+    // Show generate button if questions haven't been generated
+    if (!state.questionsGenerated) {
+        const generateButton = document.createElement('button');
+        generateButton.className = 'btn btn-primary';
+        generateButton.style.width = '100%';
+        generateButton.innerHTML = '<i class="fas fa-sparkles"></i> Generate Questions';
+        generateButton.addEventListener('click', async () => {
+            await generateQuestionsFromSkillTree(state.skillTree);
+        });
+        elements.questionsList.appendChild(generateButton);
+        return;
+    }
+    
+    // Show loading state
+    if (state.isLoadingQuestions) {
+        elements.questionsLoading.style.display = 'block';
+        return;
+    }
+    
+    elements.questionsLoading.style.display = 'none';
+    
+    // Show questions if they exist
+    const questions = state.recommendedQuestions.filter(q => !q.asked && !q.skipped);
+    
+    if (questions.length === 0 && state.questionsGenerated) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'empty-text';
+        emptyMessage.textContent = 'No questions available. Click "Generate Questions" to create some.';
+        elements.questionsList.appendChild(emptyMessage);
+        return;
+    }
     
     questions.forEach(question => {
         const card = document.createElement('div');
@@ -547,29 +617,43 @@ let skillTreeViz = null;
 
 // Render skill tree using D3
 function renderSkillTree(tree) {
-    if (!tree) return;
-    
-    // Clear container
-    elements.skillTreeContainer.innerHTML = '';
+    if (!tree) {
+        // Show message if no tree is loaded
+        elements.skillTreeContainer.innerHTML = '<div class="loading-text">Select a job to view skill tree</div>';
+        skillTreeViz = null; // Reset visualization
+        return;
+    }
     
     // Initialize D3 visualization
     if (typeof window.SkillTreeVisualization !== 'undefined') {
+        // Always recreate visualization to avoid stale references when switching jobs
+        // Clear container first
+        elements.skillTreeContainer.innerHTML = '';
+        
+        // Reset visualization instance
+        skillTreeViz = null;
+        
+        // Create new visualization instance
         skillTreeViz = new window.SkillTreeVisualization(
             elements.skillTreeContainer,
             { skillTree: tree, skillProgress: state.skillProgress }
         );
-        skillTreeViz.update(tree);
         
-        // Handle window resize
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                if (skillTreeViz) {
-                    skillTreeViz.resize();
-                }
-            }, 250);
-        });
+        // Handle window resize (only add listener once)
+        if (!window.skillTreeResizeHandler) {
+            let resizeTimeout;
+            window.skillTreeResizeHandler = () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    if (skillTreeViz) {
+                        skillTreeViz.resize();
+                    }
+                }, 250);
+            };
+            window.addEventListener('resize', window.skillTreeResizeHandler);
+        }
+        
+        skillTreeViz.update(tree, state.candidateSkillTree, state.skillSimilarities);
     } else {
         // Fallback if D3 not loaded
         elements.skillTreeContainer.innerHTML = '<div class="loading-text">Loading visualization...</div>';
@@ -588,7 +672,7 @@ function updateSkillProgress(skillName, progress) {
     state.skillProgress.set(skillName, newProgress);
     
     if (skillTreeViz) {
-        skillTreeViz.updateProgress(skillName, newProgress);
+        skillTreeViz.updateProgress(skillName, newProgress, state.candidateSkillTree, state.skillSimilarities);
     } else if (state.skillTree) {
         renderSkillTree(state.skillTree);
     }
@@ -640,6 +724,16 @@ function processTranscript() {
 elements.sidebarToggle?.addEventListener('click', () => {
     state.sidebarCollapsed = !state.sidebarCollapsed;
     elements.sidebar.classList.toggle('collapsed', state.sidebarCollapsed);
+    
+    // Update chevron icon direction
+    const icon = elements.sidebarToggle?.querySelector('i');
+    if (icon) {
+        if (state.sidebarCollapsed) {
+            icon.className = 'fas fa-chevron-right';
+        } else {
+            icon.className = 'fas fa-chevron-left';
+        }
+    }
 });
 
 elements.questionsToggle?.addEventListener('click', () => {
@@ -649,6 +743,14 @@ elements.questionsToggle?.addEventListener('click', () => {
         ? 'fas fa-chevron-down' 
         : 'fas fa-chevron-up';
 });
+
+// Initialize questions section as collapsed
+if (elements.questionsContainer) {
+    elements.questionsContainer.style.display = 'none';
+}
+if (elements.questionsIcon) {
+    elements.questionsIcon.className = 'fas fa-chevron-down';
+}
 
 elements.recordButton?.addEventListener('click', toggleRecording);
 elements.muteButton?.addEventListener('click', toggleMute);
@@ -671,6 +773,65 @@ elements.jobLinkButton?.addEventListener('click', () => {
     }
 });
 
+// Resume upload handlers
+elements.resumeUploadButton?.addEventListener('click', () => {
+    elements.resumeUpload?.click();
+});
+
+elements.resumeUpload?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (file.type !== 'application/pdf') {
+        elements.resumeStatus.textContent = 'Error: Please upload a PDF file';
+        elements.resumeStatus.className = 'resume-status error';
+        return;
+    }
+    
+    elements.resumeStatus.textContent = 'Uploading and processing resume...';
+    elements.resumeStatus.className = 'resume-status loading';
+    elements.resumeUploadButton.disabled = true;
+    
+    try {
+        const formData = new FormData();
+        formData.append('resume', file);
+        
+        // Include current job_id if available
+        if (state.skillTree && state.skillTree.job_id) {
+            formData.append('job_id', state.skillTree.job_id);
+        }
+        
+        const response = await fetch('http://localhost:5000/api/v1/upload-resume', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.skill_tree) {
+            state.candidateSkillTree = data.skill_tree;
+            state.candidateFileId = data.file_id;
+            state.skillSimilarities = data.similarity_data || null;
+            elements.resumeStatus.textContent = 'Resume processed successfully!';
+            elements.resumeStatus.className = 'resume-status success';
+            
+            // Re-render skill tree with candidate skills and similarities
+            if (state.skillTree) {
+                renderSkillTree(state.skillTree);
+            }
+        } else {
+            throw new Error(data.error || 'Failed to process resume');
+        }
+    } catch (error) {
+        console.error('Error uploading resume:', error);
+        elements.resumeStatus.textContent = `Error: ${error.message}`;
+        elements.resumeStatus.className = 'resume-status error';
+    } finally {
+        elements.resumeUploadButton.disabled = false;
+        elements.resumeUpload.value = '';
+    }
+});
+
 // Reset layout button
 elements.resetLayoutButton?.addEventListener('click', () => {
     if (skillTreeViz && state.skillTree) {
@@ -680,7 +841,7 @@ elements.resetLayoutButton?.addEventListener('click', () => {
         // Reset zoom to default
         skillTreeViz.resetZoom();
         // Re-render the tree
-        skillTreeViz.update(state.skillTree);
+        skillTreeViz.update(state.skillTree, state.candidateSkillTree, state.skillSimilarities);
     }
 });
 
@@ -689,9 +850,10 @@ async function init() {
     initWaveform();
     await initVideoStream();
     await loadJobs(); // Load jobs first
-    await loadSkillTree(); // Then load default skill tree
+    // Don't load skill tree on startup - wait for job selection
     renderQuestionHistory();
     renderTranscript();
+    renderQuestions(); // Initialize questions display
     updateMuteButton();
     
     // Watch for transcript updates

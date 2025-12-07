@@ -36,7 +36,7 @@
                         <div class="section">
                             <button class="section-header" id="questionsToggle">
                                 <span>Recommended questions</span>
-                                <i class="fas fa-chevron-up" id="questionsIcon"></i>
+                                <i class="fas fa-chevron-down" id="questionsIcon"></i>
                             </button>
                             <div class="questions-container" id="questionsContainer">
                                 <div id="questionsLoading" class="loading-text">Generating questions...</div>
@@ -61,6 +61,21 @@
                             <div class="video-wrapper">
                                 <video id="videoElement" autoplay muted playsinline></video>
                                 <div id="noVideo" class="no-video">No video</div>
+                            </div>
+                        </div>
+
+                        <div class="separator"></div>
+
+                        <!-- Resume Upload -->
+                        <div class="section">
+                            <h3 class="section-title">Resume</h3>
+                            <div class="resume-upload-container">
+                                <input type="file" id="resumeUpload" accept=".pdf" style="display: none;">
+                                <button class="btn btn-outline" id="resumeUploadButton" style="width: 100%; margin-bottom: 8px;">
+                                    <i class="fas fa-upload"></i>
+                                    Upload Resume
+                                </button>
+                                <div id="resumeStatus" class="resume-status"></div>
                             </div>
                         </div>
 
@@ -133,7 +148,7 @@
                     </div>
                 </div>
                 <div class="skill-tree-container" id="skillTreeContainer">
-                    <div class="loading-text">Loading skill tree...</div>
+                    <div class="loading-text">Select a job to view skill tree</div>
                 </div>
             </div>
         </main>

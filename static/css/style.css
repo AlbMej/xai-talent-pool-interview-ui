@@ -54,6 +54,10 @@ body {
     display: none;
 }
 
+.sidebar.collapsed .sidebar-header h2 {
+    display: none;
+}
+
 .sidebar-header {
     padding: 12px;
     border-bottom: 1px solid var(--border);
@@ -74,6 +78,19 @@ body {
     cursor: pointer;
     padding: 4px;
     color: var(--muted-foreground);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+}
+
+.sidebar-toggle:hover {
+    color: var(--foreground);
+}
+
+.sidebar.collapsed .sidebar-toggle {
+    margin: 0 auto;
 }
 
 .sidebar-content {
@@ -464,6 +481,43 @@ body {
 
 .btn-ghost:hover {
     background: var(--muted);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--foreground);
+    padding: 8px 12px;
+    font-size: 12px;
+}
+
+.btn-outline:hover {
+    background: var(--muted);
+    border-color: var(--primary);
+}
+
+.resume-upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.resume-status {
+    font-size: 11px;
+    color: var(--muted-foreground);
+    min-height: 16px;
+}
+
+.resume-status.success {
+    color: #16a34a;
+}
+
+.resume-status.error {
+    color: var(--destructive);
+}
+
+.resume-status.loading {
+    color: var(--primary);
 }
 
 .btn i {

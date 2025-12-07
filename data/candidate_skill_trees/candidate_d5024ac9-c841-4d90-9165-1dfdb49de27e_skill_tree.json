@@ -1,0 +1,97 @@
+{
+  "name": "Skills",
+  "children": [
+    {
+      "name": "Technical Skills",
+      "children": [
+        {
+          "name": "Programming Languages",
+          "children": [
+            {
+              "name": "Python",
+              "type": "skill"
+            },
+            {
+              "name": "JavaScript",
+              "type": "skill"
+            },
+            {
+              "name": "Java",
+              "type": "skill"
+            },
+            {
+              "name": "Go",
+              "type": "skill"
+            },
+            {
+              "name": "TypeScript",
+              "type": "skill"
+            },
+            {
+              "name": "SQL",
+              "type": "skill"
+            },
+            {
+              "name": "R",
+              "type": "skill"
+            }
+          ]
+        },
+        {
+          "name": "Frameworks",
+          "children": [
+            {
+              "name": "React",
+              "type": "skill"
+            },
+            {
+              "name": "Django",
+              "type": "skill"
+            },
+            {
+              "name": "Flask",
+              "type": "skill"
+            },
+            {
+              "name": "FastAPI",
+              "type": "skill"
+            },
+            {
+              "name": "PyTorch",
+              "type": "skill"
+            }
+          ]
+        },
+        {
+          "name": "Tools",
+          "children": [
+            {
+              "name": "Git",
+              "type": "skill"
+            },
+            {
+              "name": "Docker",
+              "type": "skill"
+            },
+            {
+              "name": "AWS",
+              "type": "skill"
+            },
+            {
+              "name": "Azure",
+              "type": "skill"
+            },
+            {
+              "name": "Linux",
+              "type": "skill"
+            },
+            {
+              "name": "PostgreSQL",
+              "type": "skill"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,14 @@ class SkillTreeVisualization {
         this.zoom = d3.zoom();
         this.currentTransform = d3.zoomIdentity;
         this.defaultZoom = 0.7; // Default zoom level (70%)
+        this.jobSkills = new Set(); // Skills from job skill tree
+        this.candidateSkills = new Set(); // Skills from candidate resume
+        this.skillSimilarities = null; // Similarity data from Grok API
+        
+        // Ensure container is empty before creating SVG
+        if (container) {
+            container.innerHTML = '';
+        }
         
         // Initialize SVG
         this.width = container.clientWidth - this.margin.left - this.margin.right;
@@ -66,9 +74,22 @@ class SkillTreeVisualization {
             .call(this.zoom.transform, transform);
     }
 
-    update(tree) {
+    update(tree, candidateTree = null, similarityData = null) {
         // Clear previous render
         this.g.selectAll('*').remove();
+        
+        // Extract job skills
+        this.jobSkills = this.extractSkills(tree);
+        
+        // Extract candidate skills if provided
+        if (candidateTree) {
+            this.candidateSkills = this.extractSkills(candidateTree);
+        } else {
+            this.candidateSkills = new Set();
+        }
+        
+        // Store similarity data from Grok API
+        this.skillSimilarities = similarityData;
         
         // Convert data to hierarchy
         const root = d3.hierarchy(tree);
@@ -87,6 +108,16 @@ class SkillTreeVisualization {
         if (this.currentTransform) {
             this.zoomContainer.attr('transform', this.currentTransform);
         }
+    }
+    
+    extractSkills(node, skillSet = new Set()) {
+        if (node.type === 'skill' || node.type === 'requirement') {
+            skillSet.add(node.name.toLowerCase());
+        }
+        if (node.children) {
+            node.children.forEach(child => this.extractSkills(child, skillSet));
+        }
+        return skillSet;
     }
 
     drawLinks(root) {
@@ -125,6 +156,43 @@ class SkillTreeVisualization {
             })
             .style('fill', d => {
                 if (d.data.type === 'skill' || d.data.type === 'requirement') {
+                    const skillName = d.data.name;
+                    const skillNameLower = skillName.toLowerCase();
+                    
+                    // Use Grok similarity data if available
+                    if (this.skillSimilarities && this.skillSimilarities.matches) {
+                        // Check if this job skill has a match in candidate skills
+                        const match = this.skillSimilarities.matches.find(m => 
+                            m.job_skill.toLowerCase() === skillNameLower
+                        );
+                        
+                        if (match) {
+                            // Yellow for matching skills (found by Grok)
+                            return '#eab308';
+                        }
+                    } else {
+                        // Fallback: simple matching if no Grok data
+                        const isMatch = this.candidateSkills.has(skillNameLower) && this.jobSkills.has(skillNameLower);
+                        if (isMatch) {
+                            return '#eab308';
+                        }
+                    }
+                    
+                    // Check if this is a candidate-only skill (not in job requirements)
+                    if (this.skillSimilarities && this.skillSimilarities.candidate_only) {
+                        const isCandidateOnly = this.skillSimilarities.candidate_only.some(cs => 
+                            cs.toLowerCase() === skillNameLower
+                        );
+                        if (isCandidateOnly) {
+                            // Red for candidate-only skills
+                            return '#ef4444';
+                        }
+                    } else if (this.candidateSkills.has(skillNameLower) && !this.jobSkills.has(skillNameLower)) {
+                        // Fallback: red if candidate has it but job doesn't
+                        return '#ef4444';
+                    }
+                    
+                    // Default: progress-based colors for job skills
                     const progress = this.state.skillProgress.get(d.data.name) || 0;
                     if (progress === 100) return '#16a34a';
                     if (progress > 0) return '#3b82f6';
@@ -201,13 +269,13 @@ class SkillTreeVisualization {
         });
     }
 
-    updateProgress(skillName, progress) {
+    updateProgress(skillName, progress, candidateTree = null, similarityData = null) {
         // Update the state
         this.state.skillProgress.set(skillName, progress);
         
         // Re-render to show updated progress
         if (this.state.skillTree) {
-            this.update(this.state.skillTree);
+            this.update(this.state.skillTree, candidateTree, similarityData);
         }
     }
 
