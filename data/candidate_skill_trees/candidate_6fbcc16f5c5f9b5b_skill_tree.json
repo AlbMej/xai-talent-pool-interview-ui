@@ -1,0 +1,362 @@
+{
+  "name": "Skills",
+  "children": [
+    {
+      "name": "Technical Skills",
+      "children": [
+        {
+          "name": "Programming Languages",
+          "children": [
+            {
+              "name": "Python",
+              "type": "skill"
+            },
+            {
+              "name": "Java",
+              "type": "skill"
+            },
+            {
+              "name": "Go",
+              "type": "skill"
+            },
+            {
+              "name": "TypeScript",
+              "type": "skill"
+            },
+            {
+              "name": "JavaScript",
+              "type": "skill"
+            },
+            {
+              "name": "Scheme",
+              "type": "skill"
+            },
+            {
+              "name": "CSS",
+              "type": "skill"
+            }
+          ]
+        },
+        {
+          "name": "Frameworks",
+          "children": [
+            {
+              "name": "Django",
+              "type": "skill"
+            },
+            {
+              "name": "Flask",
+              "type": "skill"
+            },
+            {
+              "name": "React",
+              "type": "skill"
+            },
+            {
+              "name": "FastAPI",
+              "type": "skill"
+            },
+            {
+              "name": "Keras",
+              "type": "skill"
+            },
+            {
+              "name": "PyTorch",
+              "type": "skill"
+            },
+            {
+              "name": "Pydantic",
+              "type": "skill"
+            },
+            {
+              "name": "Temporal.io",
+              "type": "skill"
+            },
+            {
+              "name": "Unsloth",
+              "type": "skill"
+            },
+            {
+              "name": "vLLM",
+              "type": "skill"
+            },
+            {
+              "name": "Hugging Face libs",
+              "type": "skill"
+            },
+            {
+              "name": "JUnit",
+              "type": "skill"
+            },
+            {
+              "name": "Room Persistence",
+              "type": "skill"
+            },
+            {
+              "name": "Chef-Generator",
+              "type": "skill"
+            },
+            {
+              "name": "Maven",
+              "type": "skill"
+            },
+            {
+              "name": "Vagrant",
+              "type": "skill"
+            },
+            {
+              "name": "WebSphere",
+              "type": "skill"
+            }
+          ]
+        },
+        {
+          "name": "Tools",
+          "children": [
+            {
+              "name": "NumPy",
+              "type": "skill"
+            },
+            {
+              "name": "Pandas",
+              "type": "skill"
+            },
+            {
+              "name": "Matplotlib",
+              "type": "skill"
+            },
+            {
+              "name": "unittest",
+              "type": "skill"
+            },
+            {
+              "name": "OpenCV",
+              "type": "skill"
+            },
+            {
+              "name": "Docker",
+              "type": "skill"
+            },
+            {
+              "name": "Arduino",
+              "type": "skill"
+            },
+            {
+              "name": "PySide2",
+              "type": "skill"
+            },
+            {
+              "name": "Plotly",
+              "type": "skill"
+            },
+            {
+              "name": "Colab",
+              "type": "skill"
+            },
+            {
+              "name": "Qdrant",
+              "type": "skill"
+            },
+            {
+              "name": "Android Studio",
+              "type": "skill"
+            }
+          ]
+        },
+        {
+          "name": "Databases",
+          "children": [
+            {
+              "name": "PostgreSQL",
+              "type": "skill"
+            },
+            {
+              "name": "HDFS",
+              "type": "skill"
+            },
+            {
+              "name": "Hive",
+              "type": "skill"
+            },
+            {
+              "name": "SQLite",
+              "type": "skill"
+            },
+            {
+              "name": "Qdrant",
+              "type": "skill"
+            }
+          ]
+        },
+        {
+          "name": "Cloud Platforms",
+          "children": [
+            {
+              "name": "AWS",
+              "type": "skill"
+            },
+            {
+              "name": "Azure",
+              "type": "skill"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Soft Skills",
+      "children": [
+        {
+          "name": "Leadership",
+          "type": "skill"
+        },
+        {
+          "name": "Collaboration",
+          "type": "skill"
+        },
+        {
+          "name": "Communication",
+          "type": "skill"
+        },
+        {
+          "name": "Research",
+          "type": "skill"
+        },
+        {
+          "name": "Agile Methodologies",
+          "type": "skill"
+        },
+        {
+          "name": "Stakeholder Management",
+          "type": "skill"
+        },
+        {
+          "name": "Training and Onboarding",
+          "type": "skill"
+        },
+        {
+          "name": "UX Consultation",
+          "type": "skill"
+        },
+        {
+          "name": "Sprint Planning",
+          "type": "skill"
+        }
+      ]
+    },
+    {
+      "name": "Domain Expertise",
+      "children": [
+        {
+          "name": "AI/ML",
+          "type": "skill"
+        },
+        {
+          "name": "NLP",
+          "type": "skill"
+        },
+        {
+          "name": "Computer Vision",
+          "type": "skill"
+        },
+        {
+          "name": "Data Science",
+          "type": "skill"
+        },
+        {
+          "name": "Fraud Detection",
+          "type": "skill"
+        },
+        {
+          "name": "Big Data",
+          "type": "skill"
+        },
+        {
+          "name": "Software Development",
+          "type": "skill"
+        },
+        {
+          "name": "Web Development",
+          "type": "skill"
+        },
+        {
+          "name": "Mobile App Development",
+          "type": "skill"
+        },
+        {
+          "name": "Game AI",
+          "type": "skill"
+        },
+        {
+          "name": "AI Ethics",
+          "type": "skill"
+        },
+        {
+          "name": "Knowledge-Based AI",
+          "type": "skill"
+        },
+        {
+          "name": "ML for Trading",
+          "type": "skill"
+        },
+        {
+          "name": "AI for Robotics",
+          "type": "skill"
+        },
+        {
+          "name": "Database Systems",
+          "type": "skill"
+        },
+        {
+          "name": "Natural Language Generation",
+          "type": "skill"
+        },
+        {
+          "name": "Multimodal Dialogue",
+          "type": "skill"
+        },
+        {
+          "name": "Semantic Search",
+          "type": "skill"
+        },
+        {
+          "name": "Retrieval Augmented Generation",
+          "type": "skill"
+        },
+        {
+          "name": "Anomaly Detection",
+          "type": "skill"
+        },
+        {
+          "name": "Adversarial ML",
+          "type": "skill"
+        }
+      ]
+    },
+    {
+      "name": "Certifications",
+      "children": [
+        {
+          "name": "AI Cybersecurity (Nvidia Triton)",
+          "type": "skill"
+        },
+        {
+          "name": "Deep Learning",
+          "type": "skill"
+        },
+        {
+          "name": "Generative AI w/ Diffusion",
+          "type": "skill"
+        },
+        {
+          "name": "Anomaly Detection",
+          "type": "skill"
+        },
+        {
+          "name": "Adversarial ML",
+          "type": "skill"
+        }
+      ]
+    }
+  ]
+}

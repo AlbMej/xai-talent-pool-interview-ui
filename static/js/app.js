@@ -17,6 +17,7 @@ const state = {
     skillTree: null,
     candidateSkillTree: null,
     skillProgress: new Map(),
+    nodeColors: new Map(), // Track manual node colors (grey -> red -> yellow -> green)
     waveformHeights: Array(20).fill(20),
     waveformAnimationFrame: null,
     lastProcessedIndex: 0,
@@ -636,7 +637,7 @@ function renderSkillTree(tree) {
         // Create new visualization instance
         skillTreeViz = new window.SkillTreeVisualization(
             elements.skillTreeContainer,
-            { skillTree: tree, skillProgress: state.skillProgress }
+            { skillTree: tree, skillProgress: state.skillProgress, nodeColors: state.nodeColors }
         );
         
         // Handle window resize (only add listener once)

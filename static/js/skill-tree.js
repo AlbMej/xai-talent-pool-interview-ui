@@ -11,6 +11,8 @@ class SkillTreeVisualization {
         this.jobSkills = new Set(); // Skills from job skill tree
         this.candidateSkills = new Set(); // Skills from candidate resume
         this.skillSimilarities = null; // Similarity data from Grok API
+        this.nodeColors = state.nodeColors || new Map(); // Manual node colors
+        this.nodeColors = state.nodeColors || new Map(); // Manual node colors
         
         // Ensure container is empty before creating SVG
         if (container) {
@@ -119,6 +121,68 @@ class SkillTreeVisualization {
         }
         return skillSet;
     }
+    
+    getNextColor(currentColor) {
+        // Color cycle: grey -> red -> yellow -> green -> grey
+        const colorMap = {
+            '#e4e4e7': '#ef4444', // grey -> red
+            '#ef4444': '#eab308', // red -> yellow
+            '#eab308': '#16a34a', // yellow -> green
+            '#16a34a': '#e4e4e7', // green -> grey
+            // Also handle blue (progress) - treat as grey for cycling
+            '#3b82f6': '#ef4444'  // blue -> red (start cycle)
+        };
+        // If color is not in the cycle map, start from red (first manual color)
+        return colorMap[currentColor] || '#ef4444';
+    }
+    
+    getNodeColor(d) {
+        // Check if node has a manual color set
+        if (d.data.type === 'skill' || d.data.type === 'requirement') {
+            const skillName = d.data.name;
+            const manualColor = this.nodeColors.get(skillName);
+            if (manualColor) {
+                return manualColor;
+            }
+            
+            // Otherwise use automatic color logic
+            const skillNameLower = skillName.toLowerCase();
+            
+            // Use Grok similarity data if available
+            if (this.skillSimilarities && this.skillSimilarities.matches) {
+                const match = this.skillSimilarities.matches.find(m => 
+                    m.job_skill.toLowerCase() === skillNameLower
+                );
+                if (match) {
+                    return '#eab308'; // Yellow for matching skills
+                }
+            } else {
+                const isMatch = this.candidateSkills.has(skillNameLower) && this.jobSkills.has(skillNameLower);
+                if (isMatch) {
+                    return '#eab308';
+                }
+            }
+            
+            // Check if this is a candidate-only skill
+            if (this.skillSimilarities && this.skillSimilarities.candidate_only) {
+                const isCandidateOnly = this.skillSimilarities.candidate_only.some(cs => 
+                    cs.toLowerCase() === skillNameLower
+                );
+                if (isCandidateOnly) {
+                    return '#ef4444'; // Red for candidate-only skills
+                }
+            } else if (this.candidateSkills.has(skillNameLower) && !this.jobSkills.has(skillNameLower)) {
+                return '#ef4444';
+            }
+            
+            // Default: progress-based colors for job skills
+            const progress = this.state.skillProgress.get(d.data.name) || 0;
+            if (progress === 100) return '#16a34a';
+            if (progress > 0) return '#3b82f6';
+            return '#e4e4e7'; // Grey for blank
+        }
+        return '#f4f4f5';
+    }
 
     drawLinks(root) {
         const links = root.links();
@@ -148,67 +212,54 @@ class SkillTreeVisualization {
             .attr('transform', d => `translate(${d.y},${d.x})`);
         
         // Add node circles
-        node.append('circle')
+        const circles = node.append('circle')
             .attr('r', d => {
                 if (d.data.type === 'skill' || d.data.type === 'requirement') return 8;
                 if (d.children) return 6;
                 return 4;
             })
-            .style('fill', d => {
-                if (d.data.type === 'skill' || d.data.type === 'requirement') {
-                    const skillName = d.data.name;
-                    const skillNameLower = skillName.toLowerCase();
-                    
-                    // Use Grok similarity data if available
-                    if (this.skillSimilarities && this.skillSimilarities.matches) {
-                        // Check if this job skill has a match in candidate skills
-                        const match = this.skillSimilarities.matches.find(m => 
-                            m.job_skill.toLowerCase() === skillNameLower
-                        );
-                        
-                        if (match) {
-                            // Yellow for matching skills (found by Grok)
-                            return '#eab308';
-                        }
-                    } else {
-                        // Fallback: simple matching if no Grok data
-                        const isMatch = this.candidateSkills.has(skillNameLower) && this.jobSkills.has(skillNameLower);
-                        if (isMatch) {
-                            return '#eab308';
-                        }
-                    }
-                    
-                    // Check if this is a candidate-only skill (not in job requirements)
-                    if (this.skillSimilarities && this.skillSimilarities.candidate_only) {
-                        const isCandidateOnly = this.skillSimilarities.candidate_only.some(cs => 
-                            cs.toLowerCase() === skillNameLower
-                        );
-                        if (isCandidateOnly) {
-                            // Red for candidate-only skills
-                            return '#ef4444';
-                        }
-                    } else if (this.candidateSkills.has(skillNameLower) && !this.jobSkills.has(skillNameLower)) {
-                        // Fallback: red if candidate has it but job doesn't
-                        return '#ef4444';
-                    }
-                    
-                    // Default: progress-based colors for job skills
-                    const progress = this.state.skillProgress.get(d.data.name) || 0;
-                    if (progress === 100) return '#16a34a';
-                    if (progress > 0) return '#3b82f6';
-                    return '#e4e4e7';
-                }
-                return '#f4f4f5';
-            })
+            .style('fill', d => this.getNodeColor(d))
             .style('stroke', '#09090b')
             .style('stroke-width', 1.5)
             .style('transition', 'all 0.3s ease')
+            .style('cursor', d => (d.data.type === 'skill' || d.data.type === 'requirement') ? 'pointer' : 'default')
             .on('mouseover', function() {
                 d3.select(this).attr('r', 10).style('filter', 'brightness(1.1)');
             })
             .on('mouseout', function(d) {
                 const r = (d.data.type === 'skill' || d.data.type === 'requirement') ? 8 : (d.children ? 6 : 4);
                 d3.select(this).attr('r', r).style('filter', 'none');
+            })
+            .on('click', (event, d) => {
+                // Only allow clicking on skill/requirement nodes
+                if (d.data.type === 'skill' || d.data.type === 'requirement') {
+                    event.stopPropagation(); // Prevent zoom on click
+                    const skillName = d.data.name;
+                    
+                    // Check if there's already a manual color set
+                    let currentColor = this.nodeColors.get(skillName);
+                    
+                    // If no manual color, start cycle from grey (first click)
+                    if (!currentColor) {
+                        currentColor = '#e4e4e7'; // Start from grey
+                    }
+                    
+                    // Get next color in cycle
+                    const nextColor = this.getNextColor(currentColor);
+                    
+                    // Update the color in the state
+                    this.nodeColors.set(skillName, nextColor);
+                    
+                    // Update the visual with animation
+                    d3.select(event.currentTarget)
+                        .style('fill', nextColor)
+                        .transition()
+                        .duration(150)
+                        .attr('r', 9)
+                        .transition()
+                        .duration(150)
+                        .attr('r', 8);
+                }
             });
         
         // Add node labels

@@ -5,6 +5,7 @@ import os
 import glob
 import re
 import uuid
+import hashlib
 import requests
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -446,20 +447,38 @@ def upload_resume():
         return jsonify({'error': 'Invalid file type. Only PDF files are allowed.'}), 400
     
     try:
-        # Generate unique filename
-        file_id = str(uuid.uuid4())
+        # Save uploaded file temporarily to calculate hash
         filename = secure_filename(file.filename)
         file_ext = filename.rsplit('.', 1)[1].lower()
-        saved_filename = f"{file_id}.{file_ext}"
-        file_path = os.path.join(UPLOAD_FOLDER, saved_filename)
+        temp_file_id = str(uuid.uuid4())
+        temp_saved_filename = f"{temp_file_id}.{file_ext}"
+        temp_file_path = os.path.join(UPLOAD_FOLDER, temp_saved_filename)
+        file.save(temp_file_path)
         
-        # Save uploaded file
-        file.save(file_path)
+        # Calculate hash of file content to identify if we've seen this resume before
+        with open(temp_file_path, 'rb') as f:
+            file_hash = hashlib.md5(f.read()).hexdigest()
         
-        # Generate skill tree
-        generator = ResumeSkillTreeGenerator()
+        # Use hash as file_id for deterministic identification
+        file_id = file_hash[:16]  # Use first 16 chars of hash as file_id
         output_json = os.path.join(CANDIDATE_SKILL_TREES_DIR, f"candidate_{file_id}_skill_tree.json")
-        candidate_skill_tree = generator.generate_skill_tree(file_path, output_json=output_json)
+        
+        # Check if skill tree already exists
+        if os.path.exists(output_json):
+            print(f"Found existing skill tree for resume (hash: {file_id}), loading from cache...")
+            with open(output_json, 'r', encoding='utf-8') as f:
+                candidate_skill_tree = json.load(f)
+        else:
+            # Generate skill tree
+            print(f"Generating new skill tree for resume (hash: {file_id})...")
+            generator = ResumeSkillTreeGenerator()
+            candidate_skill_tree = generator.generate_skill_tree(temp_file_path, output_json=output_json)
+        
+        # Clean up temporary uploaded file
+        try:
+            os.remove(temp_file_path)
+        except:
+            pass
         
         # Get current job skill tree if available
         job_id = request.form.get('job_id')
@@ -481,12 +500,6 @@ def upload_resume():
         
         # Find skill similarities using Grok
         similarity_data = find_skill_similarities_with_grok(job_skills, candidate_skills)
-        
-        # Clean up uploaded file
-        try:
-            os.remove(file_path)
-        except:
-            pass
         
         return jsonify({
             'success': True,
